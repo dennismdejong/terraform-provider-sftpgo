@@ -30,6 +30,8 @@ func getClient() (*client.Client, error) {
 	pwd := os.Getenv("SFTPGO_PASSWORD")
 	headers := getHeadersFromEnv()
 	edition := getIntFromEnv("SFTPGO_EDITION", 0)
+	// Default to true for TLS verification in tests (secure by default)
+	tlsVerification := true
 
-	return client.NewClient(host, user, pwd, "", headers, edition)
+	return client.NewClient(host, user, pwd, "", headers, edition, tlsVerification)
 }

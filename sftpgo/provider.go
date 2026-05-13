@@ -56,6 +56,8 @@ type sftpgoProviderModel struct {
 	APIKey   types.String `tfsdk:"api_key"`
 	Headers  []keyValue   `tfsdk:"headers"`
 	Edition  types.Int64  `tfsdk:"edition"`
+	// TLS verification setting
+	TLSVerification types.Bool `tfsdk:"tls_verification"`
 }
 
 // sftpgoProvider is the provider implementation.
@@ -111,6 +113,10 @@ func (p *sftpgoProvider) Schema(_ context.Context, _ provider.SchemaRequest, res
 				Validators: []validator.Int64{
 					int64validator.Between(0, 1),
 				},
+			},
+			"tls_verification": schema.BoolAttribute{
+				Optional:    true,
+				Description: "Disable TLS verification when connecting to SFTPGo API. Useful for development with self-signed certificates. Defaults to true.",
 			},
 		},
 	}
@@ -217,12 +223,19 @@ func (p *sftpgoProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		return
 	}
 
+	// Get TLS verification setting (default to true for secure behavior)
+	tlsVerification := true
+	if !config.TLSVerification.IsNull() {
+		tlsVerification = config.TLSVerification.ValueBool()
+	}
+
 	ctx = tflog.SetField(ctx, "SFTPGo_host", host)
 	ctx = tflog.SetField(ctx, "SFTPGo_username", username)
 	ctx = tflog.SetField(ctx, "SFTPGo_password", password)
 	ctx = tflog.SetField(ctx, "SFTPGo_api_key", apiKey)
 	ctx = tflog.SetField(ctx, "SFTPGo_headers", headers)
 	ctx = tflog.SetField(ctx, "SFTPGo edition", edition)
+	ctx = tflog.SetField(ctx, "SFTPGo_tls_verification", tlsVerification)
 	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "SFTPGo_password")
 	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "SFTPGo_api_key")
 	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "SFTPGo_headers")
@@ -230,7 +243,7 @@ func (p *sftpgoProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	tflog.Debug(ctx, "Creating SFTPGo client")
 
 	// Create a new SFTPGo client using the configuration values
-	client, err := client.NewClient(host, username, password, apiKey, headers, edition)
+	client, err := client.NewClient(host, username, password, apiKey, headers, edition, tlsVerification)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create SFTPGo API Client",

@@ -11,3 +11,18 @@ Terraform objects have slightly different structures than the ones defined in th
 You can find some [usage examples here](./examples).
 
 This provider supports both the Open Source and Enterprise editions of SFTPGo.
+
+## TLS Verification
+
+Starting from version [insert version], the provider supports disabling TLS verification for the API connection.
+This is useful in development environments with self-signed certificates or internal PKI.
+
+```hcl
+provider "sftpgo" {
+  host               = "https://sftpgo.example.com"
+  api_key            = "..."
+  tls_verification   = false
+}
+```
+
+The `tls_verification` attribute defaults to `true` for secure connections.

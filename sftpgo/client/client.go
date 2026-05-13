@@ -15,6 +15,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -105,9 +106,36 @@ type backupData struct {
 }
 
 // NewClient return an SFTPGo API client
-func NewClient(host, username, password, apiKey string, headers []KeyValue, edition int64) (*Client, error) {
+func NewClient(host, username, password, apiKey string, headers []KeyValue, edition int64, tlsVerification bool) (*Client, error) {
+	// Create HTTP client
+	httpClient := &http.Client{Timeout: 20 * time.Second}
+	
+	// Configure TLS verification if needed
+	if !tlsVerification {
+		if transport, ok := httpClient.Transport.(*http.Transport); ok {
+			// Clone the transport to avoid modifying the default one
+			newTransport := &http.Transport{
+				Proxy:                 transport.Proxy,
+				TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+			}
+			// Copy other settings from the original transport
+			newTransport.MaxIdleConns = transport.MaxIdleConns
+			newTransport.MaxIdleConnsPerHost = transport.MaxIdleConnsPerHost
+			newTransport.MaxConnsPerHost = transport.MaxConnsPerHost
+			newTransport.IdleConnTimeout = transport.IdleConnTimeout
+			newTransport.ResponseHeaderTimeout = transport.ResponseHeaderTimeout
+			newTransport.ExpectContinueTimeout = transport.ExpectContinueTimeout
+			httpClient.Transport = newTransport
+		} else {
+			// If transport is nil or not *http.Transport, create a new one
+			httpClient.Transport = &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			}
+		}
+	}
+
 	c := Client{
-		HTTPClient: &http.Client{Timeout: 20 * time.Second},
+		HTTPClient: httpClient,
 		// Default SFTPGo URL
 		HostURL: HostURL,
 		Headers: headers,
